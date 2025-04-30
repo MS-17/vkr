@@ -192,6 +192,7 @@ pyrightconfig.json
 out.png
 /project_data/*
 !/project_data/fires_with_factors/
+!/project_data/train_data/
 /interactive_maps
 
 
