@@ -86,6 +86,13 @@ def main(year_):
 	meteo_ds["LON"] = meteo_ds["LON"].astype(float)
 	print(meteo_ds["LAT"], meteo_ds["LON"])
 
+	# convert meteo data to gmt+8
+	meteo_date = meteo_ds.DATE
+	meteo_time = meteo_ds.TIME
+	meteo_date_time = pd.to_datetime(meteo_date.astype(str) + " " + meteo_time)
+	meteo_ds["date_time"] = meteo_date_time + pd.DateOffset(hours=8)
+	print(meteo_ds.head(5), meteo_ds.date_time.dt.date)
+
 	# Extract meteo factors
 	# T, RH, WIND_DIR, WIND_SPEED, APCP
 	# !!! Attention: nan and None values are skipped
@@ -96,10 +103,12 @@ def main(year_):
 		lon = fires_nonfires_ds.iloc[i].grid_lon
 		date = fires_nonfires_ds.iloc[i].event_date
 		start = date - pd.DateOffset(days=agg_period)
-		end = date
+		# include the target day as well, totally there're actually 8 days for the aggregation (the last one included)
+		end = date + pd.DateOffset(days=1)		
 		# print("Start date:", start, "End date:", end, "Grid lat:", lat, "Grid lon:", lon)
-		date_mask = (meteo_ds["DATE"] >= start) & (meteo_ds["DATE"] <= end)
+		date_mask = (meteo_ds["date_time"] >= start) & (meteo_ds["date_time"] <= end)
 		meteo_date_mask = meteo_ds[date_mask]
+		# print(meteo_date_mask)
 		# consider the floating point error
 		coord_mask = ((meteo_date_mask["LAT"] - lat).abs() <= 1.0e-5) & ((meteo_date_mask["LON"] - lon).abs() <= 1.0e-5)
 		meteo_factors = meteo_date_mask[coord_mask]
@@ -128,7 +137,7 @@ def main(year_):
 
 	# join the meteo factors and (non)fires datsets
 	factors_ds = fires_nonfires_ds.join(meteo_factors_ds)
-	print(factors_ds.dtypes)
+	print(factors_ds.dtypes) #, factors_ds.isnull().sum())
 	# factors_ds.explore()
 
 	#########################################################################################################
@@ -536,7 +545,7 @@ def main(year_):
 	return 0
 
 
-years = list(range(2015, 2025))
+years = list(range(2015, 2016))
 print("Years:", years)
 for year_ in years:
 	print(f"Processing year {year_}")
