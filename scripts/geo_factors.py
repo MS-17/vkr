@@ -86,15 +86,31 @@ def main(year_):
 	meteo_ds["LON"] = meteo_ds["LON"].astype(float)
 	print(meteo_ds["LAT"], meteo_ds["LON"])
 
-	# convert meteo data to gmt+8
+	# convert meteo data to the gmt+8
 	meteo_date = meteo_ds.DATE
 	meteo_time = meteo_ds.TIME
 	meteo_date_time = pd.to_datetime(meteo_date.astype(str) + " " + meteo_time)
 	meteo_ds["date_time"] = meteo_date_time + pd.DateOffset(hours=8)
-	print(meteo_ds.head(5), meteo_ds.date_time.dt.date)
+	# print(meteo_ds.head(5), meteo_ds.date_time.dt.date)
+
+	def mode_num(x: pd.Series) -> float:
+		"""
+		Description: counts mode for the series and gets its first value
+		Params:
+		x - the series
+		Returns: one of the series modes or numpy nan if the mode was not found
+		"""
+		m = x.mode()
+		if len(m) == 0:
+			return np.nan
+		return float(m[0])
+
+	ex_cols = ["ID", "DATE", "TIME", "LAT", "LON", "date_time"]
+	target_columns = meteo_ds.columns[~meteo_ds.columns.isin(ex_cols)]
 
 	# Extract meteo factors
-	# T, RH, WIND_DIR, WIND_SPEED, APCP
+	# T, RH, WIND_DIR, WIND_SPEED, APCP, soilw, tmpgr (agg functions: mean, max, min
+	# std, mode, median)
 	# !!! Attention: nan and None values are skipped
 	# aggregate for the aggregation period = 7
 	factors = {}
@@ -112,20 +128,19 @@ def main(year_):
 		# consider the floating point error
 		coord_mask = ((meteo_date_mask["LAT"] - lat).abs() <= 1.0e-5) & ((meteo_date_mask["LON"] - lon).abs() <= 1.0e-5)
 		meteo_factors = meteo_date_mask[coord_mask]
-		temp = "T"
-		rh = "RH"
-		wind_dir = "WIND_DIR"
-		wind_speed = "WIND_SPEED"
-		apcp = "APCP"
-		factors[i] = {
-			temp: meteo_factors[temp].mean(),
-			rh: meteo_factors[rh].mean(),
-			"WIND_DIR_STD": meteo_factors[wind_dir].std(),        # standard deviation of the wind direction
-			wind_speed: meteo_factors[wind_speed].mean(),
-			apcp: meteo_factors[apcp].mean()
-		}
-	print(factors)
+		
+		factors[i] = {}
+		# should be competable with the pd.df.aggregate method
+		agg_functions = ["mean", "max", "min", "std", mode_num, "median",]
+		for col in target_columns:
+			agg_d = meteo_factors[col].aggregate(agg_functions).to_dict()
+			# factors[i][col] = {f"{col.lower()}_{k}" : v for k, v in agg_d.items()}
+			agg_d_ = {f"{col.lower()}_{k}" : v for k, v in agg_d.items()}
+			factors[i].update(agg_d_)
+
 	assert len(factors) == fires_nonfires_ds.shape[0]
+	k_ = json.dumps({k : factors[k] for k in list(factors.keys())[:1]}, indent=4)
+	print(k_)
 
 	# form a meteo factors dataset
 	meteo_factors_ds = pd.DataFrame.from_dict(factors, orient="index")
@@ -134,11 +149,25 @@ def main(year_):
 	# round to 6 decimal places
 	prec = 6
 	meteo_factors_ds = meteo_factors_ds.apply(lambda x: np.round(x, decimals=6))
+	factors_ds_nan = fires_nonfires_ds.join(meteo_factors_ds)
 
-	# join the meteo factors and (non)fires datsets
-	factors_ds = fires_nonfires_ds.join(meteo_factors_ds)
-	print(factors_ds.dtypes) #, factors_ds.isnull().sum())
-	# factors_ds.explore()
+	# replace nans by the parameter mode calculated for the event month
+	nan_idx = factors_ds_nan[factors_ds_nan.isnull().any(axis=1)].index
+	# for each row that has at least one nan value, extract the column of that value
+	# get a month of the row, get all values for the month and get mode, write to nan
+	factors_ds = factors_ds_nan.copy()
+	for idx in nan_idx:
+		row = factors_ds.loc[idx]
+		cols = row[row.isnull()].index.to_list()
+		for col in cols:
+			row_month = row.event_date.month
+			m_ = factors_ds[factors_ds.event_date.dt.month == row_month][col].mode()
+			m = 0 if len(m_) == 0 else m_[0]
+			factors_ds.loc[idx, col] = m
+
+	# assert that no nans are left
+	assert factors_ds.isnull().sum().sum() == 0
+
 
 	#########################################################################################################
 	# %% [markdown]
