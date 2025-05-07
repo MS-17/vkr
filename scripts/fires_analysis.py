@@ -169,10 +169,16 @@ def main(year_):
 	
 		return monthly_non_fire_occurence
 
-	nonfires_stat = gen_nonfire_stat(fires_stat)
+	# what if I don't generate the revert distribution?
+	# nonfires_stat = gen_nonfire_stat(fires_stat)
+	# print("Fires statistics:", fires_stat)
+	# print("Non-fires statistics:", nonfires_stat)
+
+	nonfires_stat = fires_stat.copy()
 	print("Fires statistics:", fires_stat)
 	print("Non-fires statistics:", nonfires_stat)
-	
+
+
 	# make so that the non-fires distribution count sum becomes equal to the non-fires number 
 	stat_diff = nonfires_cp.shape[0] - sum(nonfires_stat.values())
 	if stat_diff < 0:
@@ -210,7 +216,7 @@ def main(year_):
 		nonfires_dist = {}
 		for month, nonfires_num in nonfires_stat.items():
 			_, days = monthrange(year, month)
-			mean = days / 2       # mean is a half of a month
+			mean = days / 2 + 2   # mean is a half of a month
 			std_dev = days / 3    # standard deviation is a third of a month
 			n_dist = np.random.normal(mean, std_dev, nonfires_num).round().astype(int)
 			n_dist = np.clip(n_dist, 1, days)   # clip the dist values to fit in the range of (1, days)
@@ -230,8 +236,6 @@ def main(year_):
 	for month, nonfires_num in nonfires_dist.items():
 		# print(month, nonfires_num)
 		year_month = str(data_year) + "-" + str(month)
-		l = list(map(str, nonfires_num))
-		# print(l)
 		j = list(map(lambda x: "-".join([year_month, str(x)]), nonfires_num))
 		# print(j)
 		nonfires_dates += j
@@ -257,6 +261,21 @@ def main(year_):
 	# ax[0].hist(nonfires_m, bins=8)
 	# ax[1].hist(fires_m, bins=8)
 	# plt.show()
+
+	# fires in september
+	# a = nonfires_dates_s[nonfires_dates_s.dt.month == 9].dt.day
+	# # print(a[a==1].size)
+	# months_ = [int(m) for m in range(31)]
+	# labels_ = map(lambda x: str(x), months_)
+	# fig, ax = plt.subplots(1, 1)
+	# plt.xticks(months_, labels_)
+	# plt.xlim(0, 31)
+	# # plt.gca().set_aspect("equal", adjustable="box")
+	# # plt.axis("auto")
+	# plt.hist(a, bins=np.arange(31) - 0.5, rwidth=0.6)
+	# plt.setp(ax.get_xticklabels(), rotation=45, horizontalalignment='right')
+	# plt.show()
+
 
 	#########################################################################################################
 	# %% [markdown]
