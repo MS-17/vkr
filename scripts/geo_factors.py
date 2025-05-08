@@ -498,10 +498,8 @@ def main(year_):
 	print(techno_obj.head(5), techno_obj.columns, techno_obj.dtypes, techno_obj.shape, techno_obj.crs, sep="\n")
 
 	# select columns we need
-	keep_cols = ["id", "geometry"]
+	keep_cols = ["geometry"]
 	techno_obj_ = techno_obj[keep_cols]
-	techno_obj_.rename(columns={"id" : "techno_obj_id"}, inplace=True)
-	# print(techno_obj_)
 
 	# join datasets by distance (use locs_ds)
 	techno_obj_ds = gpd.sjoin_nearest(locs_ds, techno_obj_, how="left", distance_col="techno_obj_dist")
@@ -513,57 +511,33 @@ def main(year_):
 	social_fac_ds = techno_obj_ds[~techno_obj_ds.index.duplicated(keep="first")]    # keep only the first found duplicated row
 	print("Duplicates left:", social_fac_ds.index.duplicated().sum())
 	social_fac_ds.reset_index(drop=True, inplace=True)
-	social_fac_ds.index
 
-	# print result
-	print(social_fac_ds.dtypes, social_fac_ds.shape, social_fac_ds.crs, sep="\n")
-	social_fac_ds.head(5)
 
-	# map
-	# m = social_fac_ds.explore(color="red")
-	# rivers_.explore(m=m, color="blue")
-	# roads_.explore(m=m, color="black")
-	# locs_.explore(m=m, color="green")
-	# techno_obj_.explore(m=m, color="purple")
-
-	# # save the interactive map
-	# maps_dir = "interactive_maps"
-	# if not os.path.exists(maps_dir):
-	#     os.mkdir(maps_dir)
-	# m.save(maps_dir + "/fires_geo_factors_map.html")
-	# m
-
-	# additional cleaning
-	# drop rows where the distance to the locality or to the techno object is 0
+	# some cleaning
+	# drop rows where the distance to the locality < 50 m or to the techno object < 100 m
+	# then drop techno_obj_dist colum
 	loc_col = "locality_dist"
 	tech_col = "techno_obj_dist"
-	idx_ = social_fac_ds[(social_fac_ds[loc_col] == 0) | (social_fac_ds[tech_col] == 0)].index
+	idx_ = social_fac_ds[(social_fac_ds[loc_col] < 50) | (social_fac_ds[tech_col] < 100)].index
+	print(social_fac_ds[(social_fac_ds[loc_col] < 50)].shape, social_fac_ds[(social_fac_ds[tech_col] < 100)].shape)
 	s_ds = social_fac_ds.drop(index=idx_)
 
 	soc_fac_ds = s_ds.reset_index(drop=True)
 	print(soc_fac_ds.shape, social_fac_ds.shape)
 	print(
-		"Distance to locality = 0:",soc_fac_ds[soc_fac_ds[loc_col] == 0].shape, 
-		"Distance to techno obj = 0:", soc_fac_ds[soc_fac_ds[tech_col] == 0].shape,
-		sep="\n"
+	    "Distance to locality < 50:",soc_fac_ds[soc_fac_ds[loc_col] < 50].shape, 
+	    "Distance to techno obj < 100:", soc_fac_ds[soc_fac_ds[tech_col] < 100].shape,
+	    sep="\n"
 	)
 	print("Duplicates in idx:", soc_fac_ds.index.duplicated().sum())
 	vc = soc_fac_ds.is_fire.value_counts()
 	print("Fires number:", vc[1], "Non-fires number:", vc[0])
 
-	# map
-	# m = soc_fac_ds.explore(color="red")
-	# rivers_.explore(m=m, color="blue")
-	# roads_.explore(m=m, color="black")
-	# locs_.explore(m=m, color="green")
-	# techno_obj_.explore(m=m, color="purple")
-
-	# # save the interactive map
-	# maps_dir = "interactive_maps"
-	# if not os.path.exists(maps_dir):
-	#     os.mkdir(maps_dir)
-	# m.save(maps_dir + "/fires_geo_factors_map.html")
-	# m
+	print("Drop techno_obj_dist column")
+	soc_fac_ds.drop(columns=["techno_obj_dist"], inplace=True)
+	print("Dropped?", not soc_fac_ds.columns.isin(["techno_obj_dist"]).any())
+	print("Shape:", soc_fac_ds.shape)
+	print("Columns:", soc_fac_ds.columns.to_list())
 
 	# save to file
 	write_path = project_files + "fires_with_factors/"
@@ -574,7 +548,7 @@ def main(year_):
 	return 0
 
 
-years = list(range(2015, 2016))
+years = list(range(2015, 2025))
 print("Years:", years)
 for year_ in years:
 	print(f"Processing year {year_}")
