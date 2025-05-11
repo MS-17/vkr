@@ -334,7 +334,8 @@ def main(year_):
 	print(statistics_[1])
 	raster_ds = add_raster_factor(elevation, elevation_path, factors_ds)
 	add_raster_factor(slope, slope_path, raster_ds, copy=False)
-	add_raster_factor(aspect, aspect_path, raster_ds, copy=False)
+	# add_raster_factor(aspect, aspect_path, raster_ds, copy=False)
+	add_raster_factor(aspect, aspect_path, raster_ds, copy=False, statistics=[statistics_[1]])
 	add_raster_factor(vegetation_t, vegetation_types_path, raster_ds, copy=False, statistics=[statistics_[1]])
 	print(raster_ds)
 

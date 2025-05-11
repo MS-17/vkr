@@ -169,14 +169,14 @@ def main(year_):
 	
 		return monthly_non_fire_occurence
 
-	# what if I don't generate the revert distribution?
-	# nonfires_stat = gen_nonfire_stat(fires_stat)
-	# print("Fires statistics:", fires_stat)
-	# print("Non-fires statistics:", nonfires_stat)
-
-	nonfires_stat = fires_stat.copy()
+	nonfires_stat = gen_nonfire_stat(fires_stat)
 	print("Fires statistics:", fires_stat)
 	print("Non-fires statistics:", nonfires_stat)
+
+	# what if I don't generate the revert distribution?
+	# nonfires_stat = fires_stat.copy()
+	# print("Fires statistics:", fires_stat)
+	# print("Non-fires statistics:", nonfires_stat)
 
 
 	# make so that the non-fires distribution count sum becomes equal to the non-fires number 
